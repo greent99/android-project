@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -12,15 +11,28 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class SignUp extends Activity {
     Button btnSignUp,btnSelect;
     EditText username,password,retype,name,address,phonenumber,birthdate;
     RadioButton maleBox;
     String birth;
+    private DatabaseReference mDatabase;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,11 +74,8 @@ public class SignUp extends Activity {
         btnSignUp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast toast;
 
-                myData myData = new myData();
-
-                String mUsername = username.getText().toString();
+                String mUsername = username.getText().toString().trim();
                 String mPassword = password.getText().toString().trim();
                 String mRetype = retype.getText().toString().trim();
                 String mName = name.getText().toString().trim();
@@ -77,41 +86,92 @@ public class SignUp extends Activity {
                     mGender =  "Nam";
                 else
                     mGender = "Nữ";
-                if (myData.checkUserSignUp(mUsername,mPassword) == 0)
-                {
-                    toast = Toast.makeText(SignUp.this,"Tên đăng nhập đã được đăng kí",Toast.LENGTH_LONG);
-                    toast.show();
-                }
-                else if (myData.checkUserSignUp(mUsername,mPassword) == 2)
-                {
-                    toast = Toast.makeText(SignUp.this,"Tên đăng nhập phải có tối thiểu 6 kí tự",Toast.LENGTH_LONG);
-                    toast.show();
-                }
-                else if (myData.checkUserSignUp(mUsername,mPassword) == 3)
-                {
-                    toast = Toast.makeText(SignUp.this,"Mật khẩu phải có tối thiểu 6 kí tự",Toast.LENGTH_LONG);
-                    toast.show();
-                }
-                else if (myData.checkUserSignUp(mUsername,mPassword) == 1)
-                {
-                   if(mPassword.equals(mRetype))
-                   {
-                           User user = new User(mUsername,mPassword,mName,mAddress,mPhonenumber,mGender,birth);
-                           myData.addUser(user);
-                           Intent intent = new Intent(SignUp.this, MainActivity.class);
-                           intent.putExtra("username",mUsername);
-                           intent.putExtra("password",mPassword);
-                           startActivity(intent);
-                   }
-                   else
-                   {
-                       toast = Toast.makeText(SignUp.this,"Nhập lại mật khẩu không đúng",Toast.LENGTH_LONG);
-                       toast.show();
-                   }
-                }
+                User user = new User(mUsername,mPassword,mName,mAddress,mPhonenumber,mGender,birth);
+                checkUserSignUp(user,mRetype);
             }
         });
 
+    }
+
+    public void checkUserSignUp(final User user, final String retype)
+    {
+        boolean kt = invalidUsername(user.getUsername());
+        if (kt == false)
+        {
+            Toast toast = Toast.makeText(SignUp.this, "Tên đăng nhập không được có kí tự đặc biệt hoặc khoảng trắng", Toast.LENGTH_LONG);
+            toast.show();
+        }
+        else if (user.getUsername().length() < 6) {
+            Toast toast = Toast.makeText(SignUp.this, "Tên đăng nhập phải có ít nhất 6 kí tự", Toast.LENGTH_LONG);
+            toast.show();
+        } else if (user.getPassword().length() < 6) {
+            Toast toast = Toast.makeText(SignUp.this, "Mật khẩu phải có ít nhất 6 kí tự", Toast.LENGTH_LONG);
+            toast.show();
+        } else if (!user.getPassword().equals(retype)) {
+            Toast toast = Toast.makeText(SignUp.this, "Nhập lại mật khẩu không đúng", Toast.LENGTH_LONG);
+            toast.show();
+        }else {
+            mDatabase = FirebaseDatabase.getInstance().getReference();
+            Query child = mDatabase.child("users");
+            child.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    int count = 0;
+                    for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
+                        User temp = new User();
+                        temp = userSnapshot.getValue(User.class);
+                        String u = temp.getUsername();
+                        if (u.equals(user.getUsername())) {
+                            Toast toast = Toast.makeText(SignUp.this, "Tên đăng nhập đã được đăng kí", Toast.LENGTH_LONG);
+                            toast.show();
+                            count++;
+                            break;
+                        }
+                    }
+                    if (count == 0)
+                    {
+                        addUser(user);
+                        Intent intent = new Intent(SignUp.this, MainActivity.class);
+                        intent.putExtra("username",user.getUsername());
+                        intent.putExtra("password",user.getUsername());
+                        startActivity(intent);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError)
+                {
+
+                }
+            });
+        }
+
+    }
+    public void addUser(User myUser)
+    {
+        Map<String,Object> userInfo = new HashMap<>();
+        userInfo.put("username",myUser.getUsername());
+        userInfo.put("password",myUser.getPassword());
+        userInfo.put("name",myUser.getName());
+        userInfo.put("address",myUser.getAddress());
+        userInfo.put("phone number",myUser.getPhone());
+        userInfo.put("gender",myUser.getGender());
+        userInfo.put("birthdate",myUser.getBirthdate());
+        mDatabase = FirebaseDatabase.getInstance().getReference();
+        mDatabase.child("users").child(myUser.getUsername()).setValue(userInfo);
+    }
+
+    boolean invalidUsername(String username)
+    {
+        for(int i = 0;i<username.length();i++)
+        {
+            char ch = username.charAt(i);
+            if (!((ch >= '0' && ch <='9') || (ch >= 'a' && ch<='z') || (ch>='A' && ch<= 'Z')))
+            {
+                 return false;
+            }
+        }
+        return true;
     }
 
 }

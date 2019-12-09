@@ -2,15 +2,20 @@ package com.project.finalproject;
 
 
 import android.Manifest;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.MenuItem;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,29 +23,48 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
-import java.io.ByteArrayOutputStream;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class Menu extends AppCompatActivity {
-    private static final String TAG = "AndroidCameraApi";
-    TextView txt;
+   
+
     private TextureView textureView;
-    private  Button takeAPhoto;
-    private final int CAMERA_PIC_REQUST = 1337;
+    private Button takeAPhoto;
+    private ListView lvImage;
+    private final int PERMISSION_CODE = 122;
+    private final int CAMERA_PIC_REQUEST = 1000;
+    private StorageReference mStorage;
 
+    private FirebaseStorage storage = FirebaseStorage.getInstance();
+    private StorageReference storageRef = storage.getReference();
+    private Uri image_uri;
+    protected static ArrayAdapter<String> adapter;
 
-
-    
+    private DatabaseReference mDatabase;
+    protected static  List<String> data = new ArrayList<String>();
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.menu);
         Toolbar tb = (Toolbar) findViewById(R.id.toolbar);
         takeAPhoto = (Button) findViewById(R.id.takeapicture);
-        assert takeAPhoto != null;
-        textureView = (TextureView) findViewById(R.id.textureView);
+        lvImage = (ListView) findViewById(R.id.list);
+        //assert takeAPhoto != null;
+        //textureView = (TextureView) findViewById(R.id.textureView);
         assert textureView != null;
         setSupportActionBar(tb);
 
@@ -49,13 +73,31 @@ public class Menu extends AppCompatActivity {
         getSupportActionBar().setDisplayUseLogoEnabled(true);
         getSupportActionBar().setBackgroundDrawable(getResources().getDrawable(R.drawable.mybackground));
 
+        
+
+        Intent intent = getIntent();
+        String username = intent.getStringExtra("username");
+        setData(username);
+        adapter = new ArrayAdapter<String>(Menu.this,android.R.layout.simple_list_item_1,data);
+        lvImage.setAdapter(adapter);
+
         takeAPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                takePicture();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (!checkPermissionForCamera() || !checkPermissionForExternalStorage()) {
+                        String[] permission = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+                        requestPermissions(permission, PERMISSION_CODE);
+                    } else {
+                        captureImage();
+                    }
+                } else {
+                    captureImage();
+                }
             }
         });
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(android.view.Menu menu) {
@@ -73,69 +115,115 @@ public class Menu extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
-        txt = (TextView) findViewById(R.id.txt);
+
         if (id == R.id.action_search)
         {
-            txt.setText("Search...");
+
             return true;
         }
 
         if (id == R.id.action_menu)
         {
-            txt.setText("Menu...");
+
             return true;
         }
 
         if (id == R.id.action_share)
         {
-            txt.setText("Share...");
+
             return true;
         }
         return false;
     }
 
-    /*public void takePicture(){
-        ActivityCompat.requestPermissions(Menu.this,new String[]{Manifest.permission.CAMERA},CAMERA_PIC_REQUST);
-    }  */
-    public void takePicture(){
-        ActivityCompat.requestPermissions(Menu.this,new String[]{Manifest.permission.CAMERA},CAMERA_PIC_REQUST);
-    }
+    
+   public void captureImage() {
+       Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == 1337)
-        {
-            Bitmap image = (Bitmap) data.getExtras().get("data");
-            Intent intent = new Intent(Menu.this,EditImage.class);
-            ByteArrayOutputStream bs = new ByteArrayOutputStream();
-            image.compress(Bitmap.CompressFormat.PNG,50,bs);
-            intent.putExtra("byteArray",bs.toByteArray());
-            startActivity(intent);
-        }
-        else
-        {
-            Toast toast = Toast.makeText(Menu.this,"Picture not taken",Toast.LENGTH_LONG);
-            toast.show();
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
+       ContentValues values = new ContentValues();
+       values.put(MediaStore.Images.Media.TITLE,"New Picture");
+       values.put(MediaStore.Images.Media.DESCRIPTION,"Image from camera");
+       image_uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values);
+
+       cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT,image_uri);
+       startActivityForResult(cameraIntent,CAMERA_PIC_REQUEST);
+   }
+
+       @Override
+       protected void onActivityResult ( int requestCode, int resultCode, @Nullable Intent data){
+           super.onActivityResult(requestCode, resultCode, data);
+           if (requestCode == CAMERA_PIC_REQUEST) {
+               if (resultCode == Menu.this.RESULT_OK) {
+                   Intent intent1 = getIntent();
+                   String username = intent1.getStringExtra("username");
+                   Intent intent = new Intent(Menu.this, EditImage.class);
+                   intent.putExtra("image_uri", image_uri.toString());
+                   intent.putExtra("username",username);
+                   startActivity(intent);
+               }
+           }
+
+       }
 
 
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == CAMERA_PIC_REQUST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-        {
-            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            startActivityForResult(cameraIntent,CAMERA_PIC_REQUST);
-        }
-        else
-        {
-
-        }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode ==  PERMISSION_CODE)
+        {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            {
+                captureImage();
+            }
+            else
+            {
+                Toast.makeText(Menu.this,"Permission is denied",Toast.LENGTH_LONG).show();
+            }
+        }
     }
-}
+
+    public boolean checkPermissionForExternalStorage () {
+           int result = ContextCompat.checkSelfPermission(Menu.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+           if (result == PackageManager.PERMISSION_GRANTED) {
+               return true;
+           } else {
+               return false;
+           }
+       }
+
+       public boolean checkPermissionForCamera () {
+           int result = ContextCompat.checkSelfPermission(Menu.this, Manifest.permission.CAMERA);
+           if (result == PackageManager.PERMISSION_GRANTED) {
+               return true;
+           } else {
+               return false;
+           }
+       }
+
+      public void setData(String username)
+       {
+           mDatabase = FirebaseDatabase.getInstance().getReference();
+           Query myQuery = mDatabase.child("ListImage").child(username);
+           myQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+               @Override
+               public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                   for(DataSnapshot imageSnapshot : dataSnapshot.getChildren())
+                   {
+                       MyImage image = imageSnapshot.getValue(MyImage.class);
+                       data.add(image.getName());
+                       adapter.notifyDataSetChanged();
+                   }
+               }
+
+               @Override
+               public void onCancelled(@NonNull DatabaseError databaseError) {
+
+               }
+           });
+       }
+
+   }
 
 

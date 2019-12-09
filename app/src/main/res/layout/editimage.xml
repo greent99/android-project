@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:gravity="bottom"
+    android:ignoreGravity="@id/cropImageView"
+    android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
-        android:id="@+id/edit_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <com.theartofdev.edmodo.cropper.CropImageView
 
-</LinearLayout>
+        android:id="@+id/cropImageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="50dp"
+        android:layout_marginTop="50dp"/>
+
+    <LinearLayout
+        android:id="@+id/buttomBot"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:id="@+id/btRotateL"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rotate LEFT" />
+        <Button
+            android:id="@+id/btCut"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cut" />
+
+        <Button
+            android:id="@+id/btRotateR"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rotate RIGHT" />
+    </LinearLayout>
+</RelativeLayout>
+

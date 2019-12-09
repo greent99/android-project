@@ -1,22 +1,28 @@
 package com.project.finalproject;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
+
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class MainActivity extends AppCompatActivity {
     EditText mUsername;
     EditText mPassword;
     Button mLogin;
     Button mSignup;
+    public static String BUNDLE = "bundle";
+    private DatabaseReference mDatabase;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,21 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
                 String username = mUsername.getText().toString().trim();
                 String password = mPassword.getText().toString().trim();
-                myData myData = new myData();
-                Log.d("AAA",username);
-                if (myData.checkAccount(username,password) == 0)
-                {
-                    Log.d("AAA",username);
-                    Intent intent1 = new Intent(MainActivity.this,Menu.class);
-                    intent1.putExtra("username",username);
-                    intent1.putExtra("password",password);
-                    MainActivity.this.startActivity(intent1);
-                }
-                else
-                {
-                    Toast toast = Toast.makeText(MainActivity.this,"Tên đăng nhập hoặc mật khẩu không đúng",Toast.LENGTH_LONG);
-                    toast.show();
-                }
+                checkAccount(username,password);
             }
         });
         mSignup.setOnClickListener(new View.OnClickListener() {
@@ -53,6 +45,41 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this,SignUp.class);
                 MainActivity.this.startActivity(intent);
+            }
+        });
+    }
+
+    void checkAccount(String username, final String password) {
+        mDatabase = FirebaseDatabase.getInstance().getReference();
+        mDatabase.child("users").child(username).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                User temp = dataSnapshot.getValue(User.class);
+                if (temp == null) {
+                    Toast toast = Toast.makeText(MainActivity.this, "Tên đăng nhập không tồn tại", Toast.LENGTH_LONG);
+                    toast.show();
+                }
+                else
+                    {
+                        if (temp.getPassword().equals(password))
+                        {
+                                Intent intent = new Intent(MainActivity.this, Menu.class);
+                                intent.putExtra("username",temp.getUsername());
+                                intent.putExtra("password",temp.getPassword());
+                                startActivity(intent);
+
+                        }
+                        else
+                        {
+                            Toast toast = Toast.makeText(MainActivity.this, "Mật khẩu không chính xác", Toast.LENGTH_LONG);
+                            toast.show();
+                        }
+                    }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
             }
         });
     }

@@ -2,62 +2,88 @@ package com.project.finalproject;
 
 
 public class User {
-    private String mUsername;
-    private String mName;
-    private String mPassword;
-    private String mBirthdate;
-    private String mGender;
-    private String mAddress;
-    private String mPhone;
+    private String username;
+    private String name;
+    private String password;
+    private String birthdate;
+    private String gender;
+    private String address;
+    private String phone;
 
-    public User(String mUsername,String mPassword , String mName, String mAddress,String mPhone,String mGender, String mBirthdate) {
-        this.mUsername = mUsername;
-        this.mPassword = mPassword;
-        this.mBirthdate = mBirthdate;
-        this.mGender = mGender;
-        this.mAddress = mAddress;
-        this.mPhone = mPhone;
-        this.mName = mName;
+    public User(String username, String password, String name, String address,String phone, String gender,String birthdate ) {
+        this.username = username;
+        this.password = password;
+        this.name = name;
+        this.birthdate = birthdate;
+        this.gender = gender;
+        this.address = address;
+        this.phone = phone;
     }
+
     public User()
     {
-        this.mName = "";
-        this.mPassword = "";
-        this.mBirthdate = "";
-        this.mGender = "";
-        this.mAddress = "";
-       this.mPhone = "";
+        this.username = "";
+        this.name = "";
+        this.password = "";
+        this.birthdate = "";
+        this.gender = "";
+        this.address = "";
+        this.phone = "";
     }
 
-    public String getmUsername() {
-        return mUsername;
+    public String getUsername() {
+        return username;
     }
 
-    public String getmName() {
-        return mName;
+    public String getName() {
+        return name;
     }
 
-    public String getmPassword() {
-        return mPassword;
+    public String getPassword() {
+        return password;
     }
 
-    public String getmBirthdate() {
-        return mBirthdate;
+    public String getBirthdate() {
+        return birthdate;
     }
 
-    public void setmUsername(String mUsername) {
-        this.mUsername = mUsername;
+    public String getGender() {
+        return gender;
     }
 
-    public String getmGender() {
-        return mGender;
+    public String getAddress() {
+        return address;
     }
 
-    public String getmAddress() {
-        return mAddress;
+    public String getPhone() {
+        return phone;
     }
 
-    public String getmPhone() {
-        return mPhone;
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setBirthdate(String birthdate) {
+        this.birthdate = birthdate;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 }
